@@ -1,0 +1,9 @@
+update project
+update stock di admin
+buat resi pembelian buat customer
+auto stok yang udh dibeli customer
+pembayaran cash diganti COD
+manambahkan stok menipis pada tampilan customer (min 1-5)
+Menambahkan story pembelian di dashboard admin
+Tambah alamat, no telepon secara otomatis lewat register
+
