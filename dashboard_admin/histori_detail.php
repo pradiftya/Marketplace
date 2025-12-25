@@ -26,9 +26,16 @@ $items = mysqli_query($conn, "
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Detail Order</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <title>Detail Order</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            #containerButton {
+                display: none !important;
+            }
+        }
+    </style>
 </head>
 <body class="bg-light">
 
@@ -62,7 +69,18 @@ $items = mysqli_query($conn, "
             </tbody>
         </table>
 
-        <a href="histori.php" class="btn btn-secondary mt-3">← Kembali</a>
+        <div class="row g-2 mt-1" id="containerButton">
+            <div class="col-md-6">
+                <a href="javascript:history.back()" class="btn btn-primary w-100 p-2">
+                    ⬅️ Kembali
+                </a>
+            </div>
+            <div class="col-md-6">
+                <button onclick="window.print()" class="btn btn-info text-white w-100 p-2">
+                    ⬇️ Unduh Resi
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -15,8 +15,10 @@ $filter = $_GET['filter'] ?? 'all';
 $filterQuery = "";
 if ($filter === 'month') {
     $filterQuery = " AND MONTH(o.tanggal) = MONTH(CURDATE()) AND YEAR(o.tanggal) = YEAR(CURDATE()) ";
-} elseif ($filter === 'year') {
+} else if ($filter === 'year') {
     $filterQuery = " AND YEAR(o.tanggal) = YEAR(CURDATE()) ";
+} else {
+    $filterQuery = "";
 }
 
 // ====== QUERY STATISTIK PRODUK TERJUAL ======
@@ -40,18 +42,26 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 
 // ====== QUERY TOTAL OMZET & TOTAL TRANSAKSI ======
-$sql2 = "SELECT 
-            COALESCE(SUM(o.total), 0) AS total_omzet,
-            COUNT(o.id) AS total_transaksi
-         FROM orders o
-         WHERE (o.status = 'Selesai' OR o.status = 'Diproses Pengiriman')
-         $filterQuery";
+$sql2 = "
+SELECT
+    COALESCE(SUM(oi.harga * oi.qty), 0) AS total_omzet,
+    COALESCE(SUM((oi.harga - p.modal) * oi.qty), 0) AS total_profit,
+    COUNT(DISTINCT o.id) AS total_transaksi
+FROM orders o
+INNER JOIN order_items oi ON oi.order_id = o.id
+INNER JOIN products p ON p.id = oi.product_id
+WHERE o.status IN ('Selesai', 'Diproses Pengiriman')
+$filterQuery
+";
+
+
 
 $res2 = mysqli_query($conn, $sql2);
 $data2 = mysqli_fetch_assoc($res2);
 
-$total_omzet      = $data2['total_omzet'];
-$total_transaksi  = $data2['total_transaksi'];
+$total_omzet = $data2['total_omzet'];
+$total_profit = $data2['total_profit'];
+$total_transaksi = $data2['total_transaksi'];
 ?>
 
 <!DOCTYPE html>
@@ -111,16 +121,25 @@ $total_transaksi  = $data2['total_transaksi'];
 
         <!-- Ringkasan -->
         <div class="row text-center mb-4">
-            <div class="col-md-6">
-                <div class="card bg-success text-white shadow-sm">
+            <div class="col-md-4">
+                <div class="card bg-info text-white shadow-sm">
                     <div class="card-body">
-                        <h6 class="mb-1">Total Omzet</h6>
+                        <h6 class="mb-1">Laba Kotor</h6>
                         <h4>Rp <?= number_format($total_omzet, 0, ',', '.'); ?></h4>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-6">
+            <div class="col-md-4">
+                <div class="card bg-info text-white shadow-sm">
+                    <div class="card-body">
+                        <h6 class="mb-1">Laba Bersih</h6>
+                        <h4>Rp <?= number_format($total_profit, 0, ',', '.'); ?></h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
                 <div class="card bg-info text-white shadow-sm">
                     <div class="card-body">
                         <h6 class="mb-1">Total Transaksi Selesai</h6>
