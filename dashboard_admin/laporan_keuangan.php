@@ -1,52 +1,24 @@
 <?php
-session_start();
-require_once "../config/koneksi.php";
+    session_start();
+    require_once "../config/koneksi.php";
 
-// Pastikan hanya admin
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    header("Location: ../index.php");
-    exit();
-}
+    // Filter
+    $filter = $_GET['filter'] ?? 'all';
+    $filterQuery = "";
+    if ($filter === 'month') {
+        $filterQuery = " AND MONTH(o.tanggal) = MONTH(CURDATE()) AND YEAR(o.tanggal) = YEAR(CURDATE()) ";
+    } elseif ($filter === 'year') {
+        $filterQuery = " AND YEAR(o.tanggal) = YEAR(CURDATE()) ";
+    }
 
-// Filter
-$filter = $_GET['filter'] ?? 'all';
-
-$filterQuery = "";
-if ($filter === 'month') {
-    $filterQuery = " AND MONTH(o.tanggal) = MONTH(CURDATE()) AND YEAR(o.tanggal) = YEAR(CURDATE()) ";
-} elseif ($filter === 'year') {
-    $filterQuery = " AND YEAR(o.tanggal) = YEAR(CURDATE()) ";
-}
-
-// =====================
-//  QUERY LAPORAN
-// =====================
-
-// Total omzet & transaksi
-$sql_summary = "SELECT 
-                    COALESCE(SUM(o.total),0) AS total_omzet,
-                    COUNT(o.id) AS total_transaksi,
-                    COALESCE(AVG(o.total),0) AS rata_rata
-                FROM orders o
-                WHERE (o.status = 'Selesai' OR o.status = 'Diproses Pengiriman')
-                $filterQuery";
-
-$res_summary = mysqli_query($conn, $sql_summary);
-$summary = mysqli_fetch_assoc($res_summary);
-
-// Detail transaksi
-// Detail transaksi (PERBAIKAN DI SINI)
-$sql_detail = "SELECT o.*, u.nama AS customer
-               FROM orders o
-               LEFT JOIN users u ON o.customer_id = u.id
-               WHERE (o.status = 'Selesai' OR o.status = 'Diproses Pengiriman')
-               $filterQuery
-               ORDER BY o.tanggal DESC";
-
-$res_detail = mysqli_query($conn, $sql_detail);
-
-
-
+    // =====================
+    //  QUERY LAPORAN
+    // =====================
+    $sql_summary = "SELECT COALESCE(SUM(oi.harga * oi.qty), 0) AS total_omzet, COALESCE(SUM((oi.harga - p.modal) * oi.qty), 0) AS total_profit, COUNT(DISTINCT o.id) AS total_transaksi FROM orders o INNER JOIN order_items oi ON oi.order_id = o.id INNER JOIN products p ON p.id = oi.product_id WHERE o.status IN ('Selesai', 'Diproses Pengiriman') $filterQuery";
+    $res_summary = mysqli_query($conn, $sql_summary);
+    $summary = mysqli_fetch_assoc($res_summary);
+    $sql_detail = "SELECT o.*, u.nama AS customer FROM orders o LEFT JOIN users u ON o.customer_id = u.id WHERE (o.status = 'Selesai' OR o.status = 'Diproses Pengiriman') $filterQuery ORDER BY o.tanggal DESC";
+    $res_detail = mysqli_query($conn, $sql_detail);
 ?>
 
 <!DOCTYPE html>
@@ -73,26 +45,12 @@ $res_detail = mysqli_query($conn, $sql_detail);
 </head>
 <body>
 
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
-  <div class="container">
-    <a class="navbar-brand fw-bold" href="../admin.php">Pangsisssst Admin Panel</a>
-    <div class="d-flex align-items-center">
-      <span class="navbar-text text-white me-3">
-        Halo, <?= htmlspecialchars($_SESSION['user']['nama']); ?>
-      </span>
-      <a href="../index.php?action=logout" class="btn btn-outline-light btn-sm">Logout</a>
-    </div>
-  </div>
-</nav>
+<?php include __DIR__ . '/navbar.php'; ?>
 
 <div class="container py-5">
     <div class="card p-4">
-
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="text-primary mb-0">📑 Laporan Keuangan</h4>
-
-            <!-- Filter -->
             <form method="GET" class="d-flex gap-2">
                 <select name="filter" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="all" <?= $filter=='all'?'selected':'' ?>>Semua Waktu</option>
@@ -104,21 +62,11 @@ $res_detail = mysqli_query($conn, $sql_detail);
 
         <!-- Ringkasan Keuangan -->
         <div class="row text-center mb-4">
-
             <div class="col-md-4">
-                <div class="card bg-primary text-white">
+                <div class="card bg-info text-white">
                     <div class="card-body">
-                        <h6>Total Omzet</h6>
+                        <h6>Laba Kotor</h6>
                         <h4>Rp <?= number_format($summary['total_omzet'],0,',','.'); ?></h4>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card bg-success text-white">
-                    <div class="card-body">
-                        <h6>Total Transaksi</h6>
-                        <h4><?= number_format($summary['total_transaksi'],0,',','.'); ?></h4>
                     </div>
                 </div>
             </div>
@@ -126,17 +74,23 @@ $res_detail = mysqli_query($conn, $sql_detail);
             <div class="col-md-4">
                 <div class="card bg-info text-white">
                     <div class="card-body">
-                        <h6>Rata-rata Nilai Transaksi</h6>
-                        <h4>Rp <?= number_format($summary['rata_rata'],0,',','.'); ?></h4>
+                        <h6>Laba Bersih</h6>
+                        <h4>Rp <?= number_format($summary['total_profit'],0,',','.'); ?></h4>
                     </div>
                 </div>
             </div>
 
+            <div class="col-md-4">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h6>Total Transaksi</h6>
+                        <h4><?= number_format($summary['total_transaksi'],0,',','.'); ?></h4>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Tabel Detail -->
         <h5 class="fw-bold text-secondary mb-3">Detail Transaksi</h5>
-
         <div class="table-responsive">
             <table class="table table-bordered table-striped">
                 <thead class="table-dark text-center">
@@ -160,16 +114,11 @@ $res_detail = mysqli_query($conn, $sql_detail);
                 </tbody>
             </table>
         </div>
-
-        <div class="text-center mt-4">
-            <a href="admin.php" class="btn btn-secondary">← Kembali ke Dashboard</a>
-        <a href="?export=excel&filter=<?= $filter ?>" class="btn btn-success btn-sm">📊 Export Excel
-</a>
-
-        </div>
-
+        <a href="?export=excel&filter=<?= $filter ?>" class="btn btn-info text-white w-100 p-2">
+            ⬇️ Unduh Laporan
+        </a>
     </div>
 </div>
-
+<?php include __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -2,12 +2,6 @@
 session_start();
 require_once "../config/koneksi.php";
 
-// Hanya admin
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] != 'admin') {
-    echo "<script>alert('Akses ditolak!'); window.location='index.php';</script>";
-    exit();
-}
-
 // Ambil data orders + customer
 $orders = mysqli_query($conn, "
     SELECT o.*, u.nama 
@@ -21,19 +15,18 @@ $orders = mysqli_query($conn, "
 <head>
 <meta charset="UTF-8">
 <title>Histori Pembelian</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <style>
-body {
-    background: linear-gradient(120deg, #007bff, #00b4d8);
-    min-height: 100vh;
-}
-.card { border-radius: 12px; }
-.table thead { background: #007bff; color: white; }
+    body {
+        background: linear-gradient(120deg, #007bff, #00b4d8);
+        min-height: 100vh;
+    }
+    .card { border-radius: 12px; }
+    .table thead { background: #007bff; color: white; }
 </style>
 </head>
 <body>
-
+<?php include __DIR__ . '/navbar.php'; ?>
 <div class="container mt-4">
     <h3 class="text-white mb-4">🧾 Histori Pembelian</h3>
 
@@ -66,9 +59,7 @@ body {
             </tbody>
         </table>
     </div>
-
-    <a href="./admin.php" class="btn btn-light mt-3">← Kembali</a>
 </div>
-
+<?php include __DIR__ . '/footer.php'; ?>
 </body>
 </html>

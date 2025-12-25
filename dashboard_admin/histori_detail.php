@@ -2,13 +2,7 @@
 session_start();
 require_once "../config/koneksi.php";
 
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] != 'admin') {
-    echo "<script>alert('Akses ditolak!'); window.location='../index.php';</script>";
-    exit();
-}
-
 $id = $_GET['id'] ?? 0;
-
 $order = mysqli_fetch_assoc(mysqli_query($conn, "
     SELECT o.*, u.nama 
     FROM orders o 
@@ -17,7 +11,7 @@ $order = mysqli_fetch_assoc(mysqli_query($conn, "
 "));
 
 $items = mysqli_query($conn, "
-    SELECT oi.*, p.nama 
+    SELECT oi.*, p.nama, p.modal
     FROM order_items oi
     JOIN products p ON oi.product_id = p.id
     WHERE oi.order_id = $id
@@ -26,19 +20,12 @@ $items = mysqli_query($conn, "
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <title>Detail Order</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        @media print {
-            #containerButton {
-                display: none !important;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Detail Order</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-
+<?php include __DIR__ . '/navbar.php'; ?>
 <div class="container mt-4">
     <div class="card p-3">
         <h4>Detail Order #<?= $order['id'] ?></h4>
@@ -54,35 +41,32 @@ $items = mysqli_query($conn, "
                     <th>Produk</th>
                     <th>Qty</th>
                     <th>Harga Satuan</th>
+                    <th>Harga Modal</th>
                     <th>Subtotal</th>
+                    <th>Keuntungan</th>
                 </tr>
             </thead>
             <tbody>
                 <?php while($i = mysqli_fetch_assoc($items)): ?>
+                <?php
+                    $subtotal   = $i['harga'] * $i['qty'];
+                    $keuntungan = ($i['harga'] - $i['modal']) * $i['qty'];
+                ?>
                 <tr>
                     <td><?= $i['nama'] ?></td>
                     <td><?= $i['qty'] ?></td>
                     <td>Rp <?= number_format($i['harga'],0,',','.') ?></td>
+                    <td>Rp <?= number_format($i['modal'],0,',','.') ?></td>
                     <td>Rp <?= number_format($i['harga'] * $i['qty'],0,',','.') ?></td>
+                    <td>Rp <?= number_format($keuntungan, 0, ',', '.') ?></td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
         </table>
 
-        <div class="row g-2 mt-1" id="containerButton">
-            <div class="col-md-6">
-                <a href="javascript:history.back()" class="btn btn-primary w-100 p-2">
-                    ⬅️ Kembali
-                </a>
-            </div>
-            <div class="col-md-6">
-                <button onclick="window.print()" class="btn btn-info text-white w-100 p-2">
-                    ⬇️ Unduh Resi
-                </button>
-            </div>
-        </div>
+        <a href="histori.php" class="btn btn-secondary mt-3">← Kembali</a>
     </div>
 </div>
-
+<?php include __DIR__ . '/footer.php'; ?>
 </body>
 </html>

@@ -2,27 +2,11 @@
 session_start();
 require_once "../config/koneksi.php";
 
-// ==== Proteksi akses hanya untuk admin ====
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] != 'admin') {
-   echo "<script>alert('Anda telah logout.'); window.location='../index.php';</script>";
-
-    exit();
-}
-
-$user = $_SESSION['user'];
-
-// ==== LOGOUT ====
-if (isset($_GET['action']) && $_GET['action'] == 'logout') {
-    session_unset();
-    session_destroy();
-    echo "<script>alert('Anda telah logout.'); window.location='../index.php';</script>";
-    exit();
-}
-
 // ==== TAMBAH PRODUK BARU ====
 if (isset($_POST['tambah_produk'])) {
     $nama  = mysqli_real_escape_string($conn, $_POST['nama']);
     $harga = mysqli_real_escape_string($conn, $_POST['harga']);
+    $modal = mysqli_real_escape_string($conn, $_POST['modal']);
     $stok  = mysqli_real_escape_string($conn, $_POST['stok']);
     $gambar = "";
 
@@ -34,8 +18,7 @@ if (isset($_POST['tambah_produk'])) {
         move_uploaded_file($_FILES["gambar"]["tmp_name"], $target_file);
     }
 
-    mysqli_query($conn, "INSERT INTO products (nama, harga, stok, gambar) 
-                         VALUES ('$nama','$harga','$stok','$gambar')");
+    mysqli_query($conn, "INSERT INTO products (nama, harga, stok, gambar, modal) VALUES ('$nama','$harga','$stok','$gambar','$modal')");
     echo "<script>alert('Produk berhasil ditambahkan!'); window.location='admin.php';</script>";
     exit();
 }
@@ -66,16 +49,36 @@ if (isset($_POST['tambah_stok'])) {
     exit();
 }
 
+
 // ==== AMBIL DATA PRODUK ====
-$products = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
+$queryOrderProducts = "p.id DESC";
+$queryWhereProducts = "";
+$search_name = "";
+$search_filter = "";
+if (isset($_POST['cari_produk'])) {
+    $search_name = $_POST['cari_nama']  ?? '';
+    if (!empty($_POST['cari_nama'])) {
+        $search_name = mysqli_real_escape_string($conn, $_POST['cari_nama']);
+        $queryWhereProducts = "WHERE p.nama LIKE '%$search_name%'";
+    }
+    $search_filter = $_POST['cari_filter'] ?? '0';
+    if ($search_filter == '1') {
+        $queryOrderProducts = "sold DESC";
+    } else if ($search_filter == '2') {
+        $queryOrderProducts = "sold ASC";
+    }
+}
+$queryFetchProducts = "SELECT p.*, COUNT(oi.id) AS sold FROM products p LEFT JOIN order_items oi ON oi.product_id = p.id $queryWhereProducts GROUP BY p.id, p.nama ORDER BY $queryOrderProducts";
+$products = mysqli_query($conn, $queryFetchProducts);
+
 ?>
+
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <title>Dashboard Admin - Pangsisssst Marketplace</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
     <style>
         body {
             background: linear-gradient(120deg, #007bff, #00b4d8);
@@ -83,11 +86,6 @@ $products = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
             color: #212529;
             font-family: 'Segoe UI', sans-serif;
         }
-        .navbar-custom {
-            background: linear-gradient(120deg, #007bff, #00b4d8);
-        }
-        .btn-custom { background: #00b4d8; color: white; border: none; }
-        .btn-custom:hover { background: #007bff; }
         .card { border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
         footer { text-align: center; color: white; margin-top: 40px; padding: 20px; }
     </style>
@@ -96,24 +94,7 @@ $products = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm">
-  <div class="container">
-    <a class="navbar-brand" href="admin.php">Pangsisssst Marketplace (Admin)</a>
-
-    <div class="d-flex align-items-center">
-      <a href="statistik.php" class="btn btn-light btn-sm me-2">📊 Statistik</a>
-      <a href="histori.php" class="btn btn-info btn-sm me-2">🧾 Histori Pembelian</a>
-      <a href="pesanan.php" class="btn btn-warning btn-sm me-2">📦 Lihat Pesanan</a>
-      <a href="laporan_keuangan.php" class="btn btn-warning btn-sm me-2">📑 Laporan Keuangan</a>
-
-      <span class="navbar-text text-white me-3">
-        Halo, <?= htmlspecialchars($user['nama']); ?> (Admin)
-      </span>
-
-      <a href="?action=logout" class="btn btn-outline-light btn-sm">Logout</a>
-    </div>
-  </div>
-</nav>
+<?php include __DIR__ . '/navbar.php'; ?>
 
 <div class="container mt-4">
 
@@ -126,30 +107,55 @@ $products = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
 
             <form method="POST" enctype="multipart/form-data">
                 <div class="row g-3">
-
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <input type="text" name="nama" class="form-control" placeholder="Nama Produk" required>
                     </div>
 
-                    <div class="col-md-3">
-                        <input type="number" name="harga" class="form-control" placeholder="Harga" required>
+                    <div class="col-md-2">
+                        <input type="number" name="modal" class="form-control" placeholder="Harga Modal" required>
                     </div>
 
                     <div class="col-md-2">
-                        <input type="number" name="stok" class="form-control" placeholder="Stok Awal" required>
+                        <input type="number" name="harga" class="form-control" placeholder="Harga Jual" required>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-2">
+                        <input type="number" name="stok" class="form-control" placeholder="Stok" required>
+                    </div>
+
+                    <div class="col-md-2">
                         <input type="file" name="gambar" class="form-control" accept="image/*">
                     </div>
-
+                    <button type="submit" name="tambah_produk" class="btn col-md-1 bg-primary text-white mt-3">Tambah</button>
                 </div>
-                <button type="submit" name="tambah_produk" class="btn btn-custom mt-3">Tambah Produk</button>
             </form>
         </div>
     </div>
 
     <!-- LIST PRODUK -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Cari Produk</h5>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="row g-3">
+
+                    <div class="col-md-8">
+                        <input type="text" name="cari_nama" class="form-control" placeholder="Nama Produk" value="<?= htmlspecialchars($search_name) ?>">
+                    </div>
+
+                    <div class="col-md-3">
+                        <select name="cari_filter" class="form-select">
+                            <option value="0"<?= $search_filter == '0' ? 'selected' : '' ?>>Semua</option>
+                            <option value="1"<?= $search_filter == '1' ? 'selected' : '' ?>>Paling Banyak Terjual</option>
+                            <option value="2"<?= $search_filter == '2' ? 'selected' : '' ?>>Paling Sedikit Terjual</option>
+                        </select>
+                    </div>
+                <button type="submit" name="cari_produk" class="btn col-md-1 bg-primary text-white mt-3">Cari</button>
+                </div>
+            </form>
+        </div>
+    </div>
     <div class="row">
         <?php while ($row = mysqli_fetch_assoc($products)) : ?>
         <div class="col-md-3 mb-4">
@@ -160,7 +166,10 @@ $products = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
                 <div class="card-body">
                     <h5><?= $row['nama']; ?></h5>
                     <p class="text-success fw-bold">Rp <?= number_format($row['harga']); ?></p>
-                    <p>Stok: <b><?= $row['stok']; ?></b></p>
+                    <div class="row">
+                        <p class="col-md-6">Stok : <b><?= $row['stok']; ?></b></p>
+                        <p class="col-md-6 text-end"><?= $row['sold']; ?> Terjual</p>
+                    </div>
 
                     <!-- BUTTON TAMBAH STOK -->
                     <button class="btn btn-primary btn-sm w-100 mb-2"
@@ -208,11 +217,6 @@ $products = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
     </div>
 </div>
 
-<footer>
-    © <?= date('Y'); ?> Pangsisssst Marketplace | Admin Panel
-</footer>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+<?php include __DIR__ . '/footer.php'; ?>
 </body>
 </html>

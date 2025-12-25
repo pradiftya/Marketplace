@@ -55,86 +55,97 @@ if (isset($_POST['register'])) {
 
 // ===== CEK LOGIN =====
 if (isset($_SESSION['user'])) {
-    $user = $_SESSION['user'];
-    if ($user['role'] == 'admin') {
-        header("Location: dashboard_admin/admin.php");
-        exit();
+  $user = $_SESSION['user'];
+  if ($user['role'] == 'admin') {
+      header("Location: dashboard_admin/admin.php");
+      exit();
+  }
+
+  $queryOrderProducts = "p.id DESC";
+  $queryWhereProducts = "";
+  $search_name = "";
+  $search_filter = "";
+  if (isset($_POST['cari_produk'])) {
+    $search_name = $_POST['cari_nama']  ?? '';
+    if (!empty($_POST['cari_nama'])) {
+        $search_name = mysqli_real_escape_string($conn, $_POST['cari_nama']);
+        $queryWhereProducts = "WHERE p.nama LIKE '%$search_name%'";
     }
-
-    $result = mysqli_query($conn, "SELECT * FROM products ORDER BY id DESC");
-
- // === TAMBAH KE KERANJANG ===
-if (isset($_GET['add_to_cart'])) {
-
-    $id = intval($_GET['add_to_cart']);
-
-    $query = mysqli_prepare($conn, "SELECT id, nama, harga FROM products WHERE id=?");
-    mysqli_stmt_bind_param($query, "i", $id);
-    mysqli_stmt_execute($query);
-    $result = mysqli_stmt_get_result($query);
-    $product = mysqli_fetch_assoc($result);
-
-    if ($product) {
-
-        if (!isset($_SESSION['cart'])) {
-            $_SESSION['cart'] = [];
-        }
-
-        if (isset($_SESSION['cart'][$id])) {
-            $_SESSION['cart'][$id]['qty']++;
-        } else {
-            $_SESSION['cart'][$id] = [
-                'nama'  => $product['nama'],
-                'harga' => $product['harga'],
-                'qty'   => 1
-            ];
-        }
-
-        echo "<script>alert('Produk berhasil ditambahkan!'); window.location='index.php?page=products';</script>";
-        exit();
-    } else {
-        echo "<script>alert('Produk tidak ditemukan!'); window.location='index.php';</script>";
-        exit();
+    $search_filter = $_POST['cari_filter'] ?? '0';
+    if ($search_filter == '1') {
+        $queryOrderProducts = "sold DESC";
+    } else if ($search_filter == '2') {
+        $queryOrderProducts = "sold ASC";
     }
-}
+  }
+  $queryFetchProducts = "SELECT p.*, COUNT(oi.id) AS sold FROM products p LEFT JOIN order_items oi ON oi.product_id = p.id $queryWhereProducts GROUP BY p.id, p.nama ORDER BY $queryOrderProducts";
+  $products = mysqli_query($conn, $queryFetchProducts);
 
+  // === TAMBAH KE KERANJANG ===
+  if (isset($_GET['add_to_cart'])) {
+      $id = intval($_GET['add_to_cart']);
+      $query = mysqli_prepare($conn, "SELECT id, nama, harga FROM products WHERE id=?");
+      mysqli_stmt_bind_param($query, "i", $id);
+      mysqli_stmt_execute($query);
+      $result = mysqli_stmt_get_result($query);
+      $product = mysqli_fetch_assoc($result);
 
+      if ($product) {
+          if (!isset($_SESSION['cart'])) {
+              $_SESSION['cart'] = [];
+          }
+          if (isset($_SESSION['cart'][$id])) {
+              $_SESSION['cart'][$id]['qty']++;
+          } else {
+              $_SESSION['cart'][$id] = [
+                  'nama'  => $product['nama'],
+                  'harga' => $product['harga'],
+                  'qty'   => 1
+              ];
+          }
+          echo "<script>alert('Produk berhasil ditambahkan!'); window.location='index.php?page=products';</script>";
+          exit();
+      } else {
+          echo "<script>alert('Produk tidak ditemukan!'); window.location='index.php';</script>";
+          exit();
+      }
+  }
 
-    // === HAPUS DARI KERANJANG ===
-    if (isset($_GET['remove_from_cart'])) {
-        $id = (int) $_GET['remove_from_cart'];
-        unset($_SESSION['cart'][$id]);
-        echo "<script>alert('Produk dihapus dari keranjang!'); window.location='index.php?page=cart';</script>";
-        exit();
-    }
+  // === HAPUS DARI KERANJANG ===
+  if (isset($_GET['remove_from_cart'])) {
+      $id = (int) $_GET['remove_from_cart'];
+      unset($_SESSION['cart'][$id]);
+      echo "<script>alert('Produk dihapus dari keranjang!'); window.location='index.php?page=cart';</script>";
+      exit();
+  }
 
-    // === CHECKOUT ===
-    if (isset($_POST['checkout'])) {
-        if (empty($_SESSION['cart'])) {
-            echo "<script>alert('Keranjang masih kosong!');</script>";
-        } else {
-            $customer_id = $_SESSION['user']['id'];
-            $total = 0;
-            $tanggal = date("Y-m-d H:i:s");
-            foreach ($_SESSION['cart'] as $item) {
-                $total += $item['harga'] * $item['qty'];
-            }
-            $status = 'Menunggu Pembayaran';
-            mysqli_query($conn, "INSERT INTO orders (customer_id, tanggal, status, total)
-                                 VALUES ('$customer_id', '$tanggal', '$status', '$total')");
-            $order_id = mysqli_insert_id($conn);
+  // === CHECKOUT ===
+  if (isset($_POST['checkout'])) {
+      if (empty($_SESSION['cart'])) {
+          echo "<script>alert('Keranjang masih kosong!');</script>";
+      } else {
+          $customer_id = $_SESSION['user']['id'];
+          $total = 0;
+          $tanggal = date("Y-m-d H:i:s");
+          foreach ($_SESSION['cart'] as $item) {
+              $total += $item['harga'] * $item['qty'];
+          }
+          $status = 'Menunggu Pembayaran';
+          mysqli_query($conn, "INSERT INTO orders (customer_id, tanggal, status, total)
+                                VALUES ('$customer_id', '$tanggal', '$status', '$total')");
+          $order_id = mysqli_insert_id($conn);
 
-            foreach ($_SESSION['cart'] as $id_produk => $item) {
-                $qty = $item['qty'];
-                $harga = $item['harga'];
-                mysqli_query($conn, "INSERT INTO order_items (order_id, product_id, qty, harga)
-                                     VALUES ('$order_id', '$id_produk', '$qty', '$harga')");
-            }
-            unset($_SESSION['cart']);
-            header("Location: payment.php?order_id=$order_id");
-            exit();
-        }
-    }
+          foreach ($_SESSION['cart'] as $id_produk => $item) {
+              $qty = $item['qty'];
+              $harga = $item['harga'];
+              mysqli_query($conn, "INSERT INTO order_items (order_id, product_id, qty, harga)
+                                    VALUES ('$order_id', '$id_produk', '$qty', '$harga')");
+          }
+          unset($_SESSION['cart']);
+          header("Location: payment.php?order_id=$order_id");
+          exit();
+      }
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -298,30 +309,49 @@ $data_resi = mysqli_fetch_assoc($cek_resi);
   <!-- ===== HALAMAN CUSTOMER (PRODUK DINAMIS) ===== -->
   <div class="container mt-5">
     <h3 class="text-white mb-4">Hai, <?= htmlspecialchars($user['nama']); ?> 👋 Temukan produk terbaik kami!</h3>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Cari Produk</h5>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="row g-3">
+
+                    <div class="col-md-8">
+                        <input type="text" name="cari_nama" class="form-control" placeholder="Nama Produk" value="<?= htmlspecialchars($search_name) ?>">
+                    </div>
+
+                    <div class="col-md-3">
+                        <select name="cari_filter" class="form-select">
+                            <option value="0"<?= $search_filter == '0' ? 'selected' : '' ?>>Semua</option>
+                            <option value="1"<?= $search_filter == '1' ? 'selected' : '' ?>>Paling Banyak Terjual</option>
+                            <option value="2"<?= $search_filter == '2' ? 'selected' : '' ?>>Paling Sedikit Terjual</option>
+                        </select>
+                    </div>
+                <button type="submit" name="cari_produk" class="btn col-md-1 btn-custom mt-3">Cari</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="row">
-      <?php while ($row = mysqli_fetch_assoc($result)) : ?>
+      <?php while ($row = mysqli_fetch_assoc($products)) : ?>
         <div class="col-md-3 mb-4">
           <div class="card shadow-sm">
             <img src="uploads/<?= htmlspecialchars($row['gambar']); ?>" class="card-img-top" style="height:200px;object-fit:cover;">
             <div class="card-body">
               <h5><?= htmlspecialchars($row['nama']); ?></h5>
-              <p class="text-success fw-bold mb-1">
-    Rp <?= number_format($row['harga'], 0, ',', '.'); ?>
-</p>
-
-<!-- Menampilkan stok produk -->
-<p class="text-muted mb-2">
-    Stok: <b><?= $row['stok'] ?></b>
-</p>
-
-<!-- Jika stok habis, nonaktifkan tombol -->
-<?php if ($row['stok'] > 0): ?>
-    <a href="index.php?add_to_cart=<?= $row['id']; ?>" 
-       class="btn btn-custom btn-sm w-100">+ Keranjang</a>
-<?php else: ?>
-    <button class="btn btn-secondary btn-sm w-100" disabled>Stok Habis</button>
-<?php endif; ?>
-
+              <p class="text-success fw-bold mb-1">Rp <?= number_format($row['harga'], 0, ',', '.'); ?></p>
+              <div class="row">
+                  <p class="col-md-6">Stok : <b><?= $row['stok']; ?></b></p>
+                  <p class="col-md-6 text-end"><?= $row['sold']; ?> Terjual</p>
+              </div>
+              <?php if ($row['stok'] > 0): ?>
+                  <a href="index.php?add_to_cart=<?= $row['id']; ?>" 
+                    class="btn btn-custom btn-sm w-100">+ Keranjang</a>
+              <?php else: ?>
+                  <button class="btn btn-secondary btn-sm w-100" disabled>Stok Habis</button>
+              <?php endif; ?>
             </div>
           </div>
         </div>

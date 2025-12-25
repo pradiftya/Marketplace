@@ -2,12 +2,6 @@
 session_start();
 require_once "../config/koneksi.php";
 
-// Pastikan hanya admin
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    header("Location: index.php");
-    exit();
-}
-
 // ✅ Hitung jumlah per status
 $status_counts = [];
 $statuses = ['Belum Bayar', 'Sedang Diproses', 'Pengemasan', 'Pengiriman', 'Selesai'];
@@ -84,7 +78,6 @@ $q = mysqli_query($conn, "
 <head>
 <meta charset="UTF-8">
 <title>Admin - Data Pesanan</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
     body {
         background: linear-gradient(120deg, #007bff, #00b4d8);
@@ -136,7 +129,7 @@ $q = mysqli_query($conn, "
 </style>
 </head>
 <body>
-
+<?php include __DIR__ . '/navbar.php'; ?>
 <div class="container py-5">
   <div class="card p-4">
     <h4 class="text-primary text-center mb-4">📦 Daftar Pesanan Pelanggan</h4>
@@ -233,6 +226,6 @@ $q = mysqli_query($conn, "
 
   </div>
 </div>
-
+<?php include __DIR__ . '/footer.php'; ?>
 </body>
 </html>
