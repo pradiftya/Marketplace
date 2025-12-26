@@ -30,7 +30,7 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm px-5 fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom shadow-sm px-5 mb-5 fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="admin.php">Pangsisssst Marketplace (Admin)</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,16 +38,6 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                🏪 Toko
-            </a>
-            <ul class="dropdown-menu">
-                <li>
-                    <a class="dropdown-item" href="pesanan.php">👨‍👩‍👦‍👦 Penggajian</a>
-                </li>
-            </ul>
-            </li>
             <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 📋 Pesanan
