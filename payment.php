@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($result) {
         mysqli_query($conn, "UPDATE orders SET alamat_pengiriman='$alamat', status='Menunggu Konfirmasi Admin' WHERE id='$order_id'");
-        header("Location: user/status_pembayaran.php?order_id=$order_id");
+        header("Location: ../user/status_pembayaran.php?order_id=$order_id");
         exit();
     } else {
         echo "<script>alert('❌ Gagal menyimpan pembayaran: " . mysqli_error($conn) . "');</script>";
